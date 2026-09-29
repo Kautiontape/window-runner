@@ -135,10 +135,12 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--focus); out
 
 <section id="panel" class="sheet" aria-labelledby="panelTitle" hidden>
   <h2 id="panelTitle">Tune the runner</h2>
-  <label class="toggle"><input type="checkbox" id="optLine" checked>
+  <div id="debugOpts" hidden>
+  <label class="toggle"><input type="checkbox" id="optLine">
     <span>Show terrain line<span class="hint">The path the runner treats as ground.</span></span></label>
   <label class="toggle"><input type="checkbox" id="optEdges">
     <span>Show what the runner sees<span class="hint">Edges it accepts are highlighted.</span></span></label>
+  </div>
   <label class="toggle"><input type="checkbox" id="optMotion" checked>
     <span>Prefer mid-distance objects<span class="hint">Uses motion, so it works when the view is moving, like from a car.</span></span></label>
   <div class="range">
@@ -177,7 +179,9 @@ const pctx = proc.getContext('2d', { willReadFrequently: true });
 const edgeCanvas = document.createElement('canvas');
 const ectx = edgeCanvas.getContext('2d');
 
-const settings = { showLine: true, showEdges: false, motionFilter: true, focus: 50, sensitivity: 55, ignoreTop: 8 };
+// Diagnostics (stats HUD, terrain/edge overlays) only with ?debug=1 or ?debug=true
+const DEBUG = /^(1|true)$/i.test(new URLSearchParams(location.search).get('debug') || '');
+const settings = { showLine: DEBUG, showEdges: false, motionFilter: true, focus: 50, sensitivity: 55, ignoreTop: 8 };
 const MARKER = '#3fd4f2', SCARF = '#ff5a36', INK = 'rgba(16,24,36,0.92)';
 
 // ---------- Buffers ----------
@@ -737,7 +741,7 @@ function resetTracking() {
 // ---------- UI ----------
 const start = $('start'), status = $('status'), tuneBtn = $('tune'), panel = $('panel'), fileInput = $('file');
 function setStatus(msg, isError) { status.textContent = msg || ''; status.classList.toggle('error', !!isError); }
-function enterRun() { start.hidden = true; panel.hidden = true; tuneBtn.hidden = false; hud.hidden = false; setStatus(''); }
+function enterRun() { start.hidden = true; panel.hidden = true; tuneBtn.hidden = false; hud.hidden = !DEBUG; setStatus(''); }
 function showStart() { start.hidden = false; panel.hidden = true; tuneBtn.hidden = true; hud.hidden = true; }
 function stopStream() {
   const so = video.srcObject;
@@ -782,12 +786,14 @@ fileInput.addEventListener('change', async () => {
   } catch (e) { setStatus('That video couldn\'t be played. Try an MP4 or WebM file.', true); }
 });
 $('btnDemo').addEventListener('click', () => { stopStream(); video.pause(); mode = 'demo'; resetTracking(); enterRun(); });
-tuneBtn.addEventListener('click', () => { panel.hidden = false; tuneBtn.hidden = true; $('optLine').focus(); });
+tuneBtn.addEventListener('click', () => { panel.hidden = false; tuneBtn.hidden = true; $(DEBUG ? 'optLine' : 'optMotion').focus(); });
 $('btnDone').addEventListener('click', () => { panel.hidden = true; tuneBtn.hidden = false; tuneBtn.focus(); });
 $('btnSources').addEventListener('click', () => { showStart(); $('btnCamera').focus(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) $('btnDone').click(); });
 
 const focusInput = $('optFocus');
+$('debugOpts').hidden = !DEBUG;
+$('optLine').checked = settings.showLine;
 $('optLine').addEventListener('change', (e) => { settings.showLine = e.target.checked; });
 $('optEdges').addEventListener('change', (e) => { settings.showEdges = e.target.checked; });
 $('optMotion').addEventListener('change', (e) => { settings.motionFilter = e.target.checked; focusInput.disabled = !e.target.checked; });
