@@ -1,0 +1,14 @@
+name: Deploy to ktn
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: [self-hosted, ktn]
+    steps:
+      # Static site, no build step. The host nginx serves the checkout at kautiontape.com/window-runner/
+      # (an alias in the landing site's config) and terminates TLS.
+      - name: Deploy
+        run: |
+          cd /opt/services/window-runner
+          git pull origin main
